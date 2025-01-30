@@ -45,7 +45,7 @@ Vue.component("v-volume-search", {
           <li><a href="">Text ({{inText}})</a></li>
           <li><a href="">Annotation ({{inAnnotations}})</a></li>
         </ul>
-        <ul id="rx-search-panel" class="uk-switcher uk-overflow-auto uk-width-expand" uk-height-viewport="offset-bottom: 100">
+        <ul id="rx-search-panel" class="uk-switcher uk-panel-scrollable uk-resize-vertical" uk-height-viewport="offset-bottom: 100">
           <li>
               <div v-if="inText==0" class="rx-padding-extra-small uk-text-small"> No matches in text. </div>
               <div v-else v-for="(match, index) in textData" :key="index" class="rx-padding-extra-small">
@@ -535,6 +535,19 @@ var readux = new Vue({
   }
 });
 
+// Initialize the custom selectize
+function initializeSelectize() {
+  // Select all dynamically created select fields and apply selectize
+  jQuery(".custom-search-selectize").each(function () {
+    if (!jQuery(this).hasClass("selectized")) {  // Prevent double initialization
+        jQuery(this).selectize({
+            plugins: ["clear_button"],
+            placeholder: "Select one or more..."
+        });
+    }
+  });
+}
+
 // Initialize selectize for search filters
 jQuery(function () {
   jQuery("#id_collection").selectize({
@@ -549,4 +562,9 @@ jQuery(function () {
     plugins: ["clear_button"],
     placeholder: 'Select one or more...'
   });
+
+  initializeSelectize();
 });
+
+// In case dynamically added fields appear, re-initialize
+jQuery(document).on("change", ".custom-search-selectize", initializeSelectize);
