@@ -1,14 +1,17 @@
-""" Module of service classes and methods for ingest. """
+"""Module of service classes and methods for ingest."""
 
 import itertools
 import re
+import logging
 from mimetypes import guess_type
 from urllib.parse import unquote, urlparse
 
 from django.apps import apps
 from tablib.core import Dataset
 
-from .models import Manifest, RelatedLink
+from .models import Manifest, RelatedLink, Language
+
+LOGGER = logging.getLogger(__name__)
 
 
 def clean_metadata(metadata):
@@ -52,11 +55,11 @@ def create_related_links(manifest, related_str):
     :rtype: None
     """
     for link in related_str.split(";"):
-        (format, _) = guess_type(link)
+        (link_format, _) = guess_type(link)
         RelatedLink.objects.create(
             manifest=manifest,
             link=link,
-            format=format
+            format=link_format
             or "text/html",  # assume web page if MIME type cannot be determined
             is_structured_data=False,  # assume this is not meant for seeAlso
         )
@@ -77,6 +80,12 @@ def set_metadata(manifest, metadata):
         if casefolded_key == "related":
             # add RelatedLinks from metadata spreadsheet key "related"
             create_related_links(manifest, value)
+        elif casefolded_key.startswith("language"):
+            for language in value.split(";"):
+                try:
+                    manifest.languages.add(Language.objects.get(code=language))
+                except Language.DoesNotExist:
+                    LOGGER.warning(f"Language code {language} not found.")
         elif casefolded_key in fields:
             setattr(manifest, casefolded_key, value)
         else:
@@ -111,53 +120,53 @@ def set_metadata(manifest, metadata):
     manifest.save()
 
 
-def create_manifest(ingest):
-    """
-    Create or update a Manifest from supplied metadata and images.
-    :return: New or updated Manifest with supplied `pid`
-    :rtype: iiif.manifest.models.Manifest
-    """
-    manifest = None
-    # Make a copy of the metadata so we don't extract it over and over.
-    try:
-        if not bool(ingest.manifest) or ingest.manifest is None:
-            ingest.open_metadata()
+# def create_manifest(ingest):
+#     """
+#     Create or update a Manifest from supplied metadata and images.
+#     :return: New or updated Manifest with supplied `pid`
+#     :rtype: iiif.manifest.models.Manifest
+#     """
+#     manifest = None
+#     # Make a copy of the metadata so we don't extract it over and over.
+#     try:
+#         if not bool(ingest.manifest) or ingest.manifest is None:
+#             ingest.open_metadata()
 
-        metadata = dict(ingest.metadata)
-    except TypeError:
-        metadata = None
-    if metadata:
-        if "pid" in metadata:
-            manifest, created = Manifest.objects.get_or_create(
-                pid=metadata["pid"].replace("_", "-")
-            )
-        else:
-            manifest = Manifest.objects.create()
-        set_metadata(manifest, metadata)
-    else:
-        manifest = Manifest()
+#         metadata = dict(ingest.metadata)
+#     except TypeError:
+#         metadata = None
+#     if metadata:
+#         if "pid" in metadata:
+#             manifest, _ = Manifest.objects.get_or_create(
+#                 pid=metadata["pid"].replace("_", "-")
+#             )
+#         else:
+#             manifest = Manifest.objects.create()
+#         set_metadata(manifest, metadata)
+#     else:
+#         manifest = Manifest()
 
-    manifest.image_server = ingest.image_server
+#     manifest.image_server = ingest.image_server
 
-    # This was giving me a 'django.core.exceptions.AppRegistryNotReady: Models aren't loaded yet' error.
-    Remote = apps.get_model("ingest.remote")
+#     # This was giving me a 'django.core.exceptions.AppRegistryNotReady: Models aren't loaded yet' error.
+#     Remote = apps.get_model("ingest.remote")
 
-    # Ensure that manifest has an ID before updating the M2M relationship
-    manifest.save()
-    if not isinstance(ingest, Remote):
-        manifest.refresh_from_db()
-        manifest.collections.set(ingest.collections.all())
-        # Save again once relationship is set
-        manifest.save()
-    else:
-        RelatedLink(
-            manifest=manifest,
-            link=ingest.remote_url,
-            format="application/ld+json",
-            is_structured_data=True,
-        ).save()
+#     # Ensure that manifest has an ID before updating the M2M relationship
+#     manifest.save()
+#     if not isinstance(ingest, Remote):
+#         manifest.refresh_from_db()
+#         manifest.collections.set(ingest.collections.all())
+#         # Save again once relationship is set
+#         manifest.save()
+#     else:
+#         RelatedLink(
+#             manifest=manifest,
+#             link=ingest.remote_url,
+#             format="application/ld+json",
+#             is_structured_data=True,
+#         ).save()
 
-    return manifest
+#     return manifest
 
 
 def extract_image_server(canvas):

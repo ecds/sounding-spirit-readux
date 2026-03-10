@@ -2,7 +2,6 @@
 
 import re
 import json
-from datetime import datetime
 from django.core.serializers import serialize
 from apps.iiif.manifests.models import Manifest
 from apps.iiif.canvases.models import Canvas
@@ -34,6 +33,9 @@ class Serializer(JSONSerializer):
         if obj.author is not None:
             metadata.append({"label": "Author", "value": obj.author})
 
+        if obj.publisher is not None:
+            metadata.append({"label": "Publisher", "value": obj.publisher})
+
         if obj.published_city is not None:
             metadata.append({"label": "Published City", "value": obj.published_city})
 
@@ -45,7 +47,7 @@ class Serializer(JSONSerializer):
                 {"label": "Published Date EDTF", "value": str(obj.published_date_edtf)}
             )
 
-        if obj.languages.count() > 0 is not None:
+        if obj.languages.count() > 0:
             metadata.append(
                 {
                     "label": "Languages",
@@ -53,7 +55,7 @@ class Serializer(JSONSerializer):
                 }
             )
 
-        if obj.collections.count() > 0 is not None:
+        if obj.collections.count() > 0:
             metadata.append(
                 {
                     "label": "Collections",
@@ -134,14 +136,10 @@ def Deserializer(data):
                             field = field.replace(" ", "_")
                             field = field.lower()
                             if field in fields:
-                                if field == "published_date":
-                                    date = __parse_date(attr["value"])
-                                    if date is not None:
-                                        manifest[field] = date
-                                    else:
-                                        manifest["published_date_edtf"] = attr["value"]
-                                elif field == "collections" or field == "languages":
+                                if field == "collections" or field == "languages":
                                     relations[field] = attr["value"]
+                                elif field == "authors":
+                                    manifest["author"] = attr["value"]
                                 else:
                                     manifest[field] = attr["value"]
                             else:
@@ -157,16 +155,3 @@ def Deserializer(data):
                     manifest[key] = value[value.keys()[0]]
 
     return (manifest, relations)
-
-
-def __parse_date(date):
-    parts = [date, 1, 1]
-    if "/" in date:
-        parts = parts[0].split("/")
-    elif "-" in date:
-        parts = parts[0].split("-")
-
-    try:
-        return datetime(*[int(part) for part in parts])
-    except ValueError:
-        return None
