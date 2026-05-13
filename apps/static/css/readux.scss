@@ -9,6 +9,7 @@
 @import './components/wagtail.scss';
 @import './components/uk-switch.scss';
 @import './components/footer.scss';
+@import './components/user-form.scss';
 
 /* -------------------------------------------------------------------------- */
 /* 1) ROOT VARIABLES                                                          */
@@ -26,6 +27,13 @@
 html, body {
   height: 100%;
   margin: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* #v-readux is the direct child of body; it must stretch and pass height down to main */
+#v-readux {
+  flex: 1;
   display: flex;
   flex-direction: column;
 }
@@ -111,8 +119,23 @@ em { color: inherit !important; }
   padding: 0;
   margin: 0;
 
-  > li { margin-right: 5px; }
-  > li + li::before { content: "/"; margin-right: 5px; color: $rx-color-midnight-blue; }
+  > li {
+    margin-right: 5px;
+
+    &:last-child:empty {
+      display: none;
+    }
+  }
+
+  > li + li::before {
+    content: "/";
+    margin-right: 5px;
+    color: $rx-color-midnight-blue;
+  }
+
+  > li:last-child:empty + li::before {
+    display: none;
+  }
 
   a {
     color: $rx-color-midnight-blue;
@@ -255,7 +278,7 @@ em { color: inherit !important; }
 
 /* Info line / pagination */
 .info-line {
-  display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;
+  display: flex; justify-content: space-between; align-items: center; margin-top: 2rem; margin-bottom: 20px;
   font-weight: 600; color: $rx-color-midnight-blue;
   .info-group, .pagination-controls { display: flex; align-items: center; gap: 5px; }
   a, select { color: $rx-color-mario-red; text-decoration: underline; }
@@ -477,6 +500,13 @@ ul.listing-thumbs > li > img.thumbnail-image { height: 150px; }
     white-space: normal;
   }
 /* End */
+
+.uk-notification-message {
+  background-color: $rx-color-faded-mint;
+  color: $rx-color-midnight-blue;
+  border-radius: 4px;
+  box-shadow: 0 4px 12px rgba($rx-color-midnight-blue, 0.15);
+}
 
 .rx-line-height-lg {
   line-height: 1.15em;
